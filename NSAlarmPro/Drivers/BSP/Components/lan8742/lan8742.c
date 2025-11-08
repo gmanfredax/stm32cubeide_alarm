@@ -93,51 +93,37 @@ int32_t  LAN8742_RegisterBusIO(lan8742_Object_t *pObj, lan8742_IOCtx_t *ioctx)
        pObj->IO.Init();
      }
 
-     /* If a valid device address has been provided, make sure the PHY answers */
-     if(pObj->DevAddr <= LAN8742_MAX_DEV_ADDR)
+     /* for later check */
+     pObj->DevAddr = LAN8742_MAX_DEV_ADDR + 1;
+
+     /* Get the device address from special mode register */
+     for(addr = 0; addr <= LAN8742_MAX_DEV_ADDR; addr ++)
      {
-       if(pObj->IO.ReadReg(pObj->DevAddr, LAN8742_BSR, &regvalue) < 0)
+       if(pObj->IO.ReadReg(addr, LAN8742_SMR, &regvalue) < 0)
        {
          status = LAN8742_STATUS_READ_ERROR;
+         /* Can't read from this device address
+            continue with next address */
+         continue;
+       }
+
+       if((regvalue & LAN8742_SMR_PHY_ADDR) == addr)
+       {
+         pObj->DevAddr = addr;
+         status = LAN8742_STATUS_OK;
+         break;
        }
      }
 
-	 /* No valid address supplied or provided address did not answer: scan bus */
-	if((pObj->DevAddr > LAN8742_MAX_DEV_ADDR) || (status != LAN8742_STATUS_OK))
-	{
-	   /* for later check */
-	   pObj->DevAddr = LAN8742_MAX_DEV_ADDR + 1;
-	   status = LAN8742_STATUS_OK;
+     if(pObj->DevAddr > LAN8742_MAX_DEV_ADDR)
+     {
+       status = LAN8742_STATUS_ADDRESS_ERROR;
+     }
 
-	  /* Get the device address from special mode register */
-	  for(addr = 0; addr <= LAN8742_MAX_DEV_ADDR; addr ++)
-	  {
-		if(pObj->IO.ReadReg(addr, LAN8742_SMR, &regvalue) < 0)
-		{
-		  status = LAN8742_STATUS_READ_ERROR;
-		  /* Can't read from this device address
-			 continue with next address */
-		  continue;
-		}
-
-		if((regvalue & LAN8742_SMR_PHY_ADDR) == addr)
-		{
-		  pObj->DevAddr = addr;
-		  status = LAN8742_STATUS_OK;
-		  break;
-		}
-	  }
-
-      if(pObj->DevAddr > LAN8742_MAX_DEV_ADDR)
-      {
-        status = LAN8742_STATUS_ADDRESS_ERROR;
-      }
-    }
-
-    /* if device address is matched */
-    if(status == LAN8742_STATUS_OK)
-    {
-      pObj->Is_Initialized = 1;
+     /* if device address is matched */
+     if(status == LAN8742_STATUS_OK)
+     {
+       pObj->Is_Initialized = 1;
      }
    }
 
